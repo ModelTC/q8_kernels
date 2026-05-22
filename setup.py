@@ -38,6 +38,23 @@ if CUDA_HOME is not None:
 # ninja build does not work unless include_dirs are abs path
 this_dir = os.path.dirname(os.path.abspath(__file__))
 
+
+def get_cccl_include_dirs(cuda_home):
+    # CUDA 13+ moved libcu++ headers under include/cccl; g++ does not pick this up automatically.
+    if cuda_home is None:
+        return []
+    candidates = [
+        os.path.join(cuda_home, "include", "cccl"),
+        os.path.join(cuda_home, "targets", "x86_64-linux", "include", "cccl"),
+    ]
+    for candidate in candidates:
+        if os.path.exists(os.path.join(candidate, "cuda", "std", "utility")):
+            return [Path(candidate)]
+    return []
+
+
+cccl_include_dirs = get_cccl_include_dirs(CUDA_HOME)
+
 # cuda module
 ext_modules.append(
     CUDAExtension(
@@ -78,7 +95,7 @@ ext_modules.append(
             Path(this_dir) / "third_party/cutlass/include",
             Path(this_dir) / "third_party/cutlass/tools/utils/include" ,
             Path(this_dir) / "third_party/cutlass/examples/common" ,
-            # Path(this_dir) / "some" / "thing" / "more",
+            *cccl_include_dirs,
         ],
     )
 )
@@ -119,7 +136,7 @@ ext_modules.append(
             Path(this_dir) / "third_party/cutlass/include",
             Path(this_dir) / "third_party/cutlass/tools/utils/include" ,
             Path(this_dir) / "third_party/cutlass/examples/common" ,
-            # Path(this_dir) / "some" / "thing" / "more",
+            *cccl_include_dirs,
         ],
     )
 )
@@ -179,52 +196,52 @@ ext_modules.append(
             Path(this_dir) / "third_party/cutlass/include",
             Path(this_dir) / "third_party/cutlass/tools/utils/include" ,
             Path(this_dir) / "third_party/cutlass/examples/common" ,
-            # Path(this_dir) / "some" / "thing" / "more",
+            *cccl_include_dirs,
         ],
     )
 )
 
 
-ext_modules.append(
-    CUDAExtension(
-        # package name for import
-        name="q8_kernels_cuda.flash_attention._C",
-        sources=[
-            "csrc/flash_attention/flash_attention.cpp",
-            "csrc/flash_attention/flash_attention_cuda.cu",
-            "csrc/flash_attention/flash_attention_cuda_mask.cu",
-        ],
-          extra_compile_args={
-            # add c compile flags
-            "cxx": ["-O3", "-std=c++17"] + generator_flag,
-            # add nvcc compile flags
-            "nvcc": [
-                    "-O3",
-                    "-std=c++17",
-                    "-U__CUDA_NO_HALF_OPERATORS__",
-                    "--use_fast_math",
-                    "-lineinfo",
-                    "--ptxas-options=-v",
-                    "--ptxas-options=-O2",
-                    "-U__CUDA_NO_HALF_OPERATORS__",
-                    "-U__CUDA_NO_HALF_CONVERSIONS__",
-                    "-U__CUDA_NO_HALF2_OPERATORS__",
-                    "-U__CUDA_NO_BFLOAT16_CONVERSIONS__",
-                    "--expt-relaxed-constexpr",
-                    "--expt-extended-lambda",
-                ]
-                + generator_flag
-                + cc_flag,
-        },
-        include_dirs=[
-            Path(this_dir) / "csrc"/"flash_attention",
-            Path(this_dir) / "third_party/cutlass/include",
-            Path(this_dir) / "third_party/cutlass/tools/utils/include" ,
-            Path(this_dir) / "third_party/cutlass/examples/common" ,
-            # Path(this_dir) / "some" / "thing" / "more",
-        ],
-    )
-)
+# ext_modules.append(
+#     CUDAExtension(
+#         # package name for import
+#         name="q8_kernels_cuda.flash_attention._C",
+#         sources=[
+#             "csrc/flash_attention/flash_attention.cpp",
+#             "csrc/flash_attention/flash_attention_cuda.cu",
+#             "csrc/flash_attention/flash_attention_cuda_mask.cu",
+#         ],
+#           extra_compile_args={
+#             # add c compile flags
+#             "cxx": ["-O3", "-std=c++17"] + generator_flag,
+#             # add nvcc compile flags
+#             "nvcc": [
+#                     "-O3",
+#                     "-std=c++17",
+#                     "-U__CUDA_NO_HALF_OPERATORS__",
+#                     "--use_fast_math",
+#                     "-lineinfo",
+#                     "--ptxas-options=-v",
+#                     "--ptxas-options=-O2",
+#                     "-U__CUDA_NO_HALF_OPERATORS__",
+#                     "-U__CUDA_NO_HALF_CONVERSIONS__",
+#                     "-U__CUDA_NO_HALF2_OPERATORS__",
+#                     "-U__CUDA_NO_BFLOAT16_CONVERSIONS__",
+#                     "--expt-relaxed-constexpr",
+#                     "--expt-extended-lambda",
+#                 ]
+#                 + generator_flag
+#                 + cc_flag,
+#         },
+#         include_dirs=[
+#             Path(this_dir) / "csrc"/"flash_attention",
+#             Path(this_dir) / "third_party/cutlass/include",
+#             Path(this_dir) / "third_party/cutlass/tools/utils/include" ,
+#             Path(this_dir) / "third_party/cutlass/examples/common" ,
+#             *cccl_include_dirs,
+#         ],
+#     )
+# )
 
 setup(
     name=PACKAGE_NAME,
